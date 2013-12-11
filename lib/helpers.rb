@@ -27,9 +27,14 @@ module DHCPD
       config
     end
 
-    def ip_from_pool(hwaddr)
+    def ip_from_default_pool(hwaddr)
       IPAddr.new('192.168.1.200')
       #someday it will get random ip from pool and check it is free then return it
+    end
+
+    def remote_get_payload(hwaddr, type)
+      # will be implkemented soon
+      false
     end
   end
 end

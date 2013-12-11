@@ -14,7 +14,7 @@ module DHCPD
     LOG_LEVEL = 0
 
     # Server ip
-    SERVER_BIND_IP = '0.0.0.0'
+    SERVER_BIND_IP = ARGV[0].to_s ||= '0.0.0.0'
 
     # Pool's configuration
     #
@@ -30,7 +30,8 @@ module DHCPD
                 subnet_mask: '255.255.255.0',
                 domainname: 'local.domain',
                 dns_server: '8.8.8.8',
-                lease_time: 28800 # 8 hours
+                lease_time: 28800, # 8 hours
+                filename: 'pxeloader.0'
             }
         }
   end

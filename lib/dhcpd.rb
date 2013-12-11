@@ -1,6 +1,5 @@
 require 'socket'
 require 'ipaddr'
-require 'ostruct'
 require 'net-dhcp'
 require 'log4r'
 require_relative 'helpers'
@@ -10,7 +9,7 @@ module DHCPD
     include DHCP
 
     def initialize(ip_pool)
-      @pool = pool_from(ip_pool)
+      @ip_pool = pool_from(ip_pool)
       @log = Log4r::Logger.new 'ruby-dhcpd'
       @log.outputters = Log4r::Outputter.stdout
       @log.level = LOG_LEVEL
@@ -110,23 +109,36 @@ module DHCPD
     end
 
     def send_packet(msg,addr,type)
+      packet = craft_packet(msg,addr,type)
+      @socket.send(packet, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+    end
+
+    def craft_packet(msg,addr,type)
+      hwaddr = to_hwaddr(msg.chaddr,msg.hlen)
+      payload = remote_get_payload(hwaddr, type)
+      unless payload
+	payload = Hash.new
+	@ip_pool[:options].each {|op, data| payload[op] = data} 
+	payload[:ipaddr] = ip_from_default_pool(hwaddr).to_i
+      end
       params = {
           op: $DHCP_OP_REPLY,
           xid: msg.xid,
           chaddr: msg.chaddr,
-          yiaddr: ip_from_pool(to_hwaddr(msg.chaddr,msg.hlen)).to_i,
-          siaddr: IPAddr.new(@pool[:options][:dhcp_server].join('.')).to_i,
+          yiaddr: payload[:ipaddr],
+          siaddr: IPAddr.new(payload[:dhcp_server].join('.')).to_i,
+	  fname: payload[:filename],
           options: [
               @reply_types[type],
-              ServerIdentifierOption.new({payload: @pool[:options][:dhcp_server]}),
-              DomainNameOption.new({payload: @pool[:options][:domainname]}),
-              DomainNameServerOption.new({payload: @pool[:options][:dns_server]}),
-              IPAddressLeaseTimeOption.new({payload: @pool[:options][:lease_time]}),
-              SubnetMaskOption.new({payload: @pool[:options][:subnet_mask]}),
-              RouterOption.new({payload: @pool[:options][:gateway]})
+              ServerIdentifierOption.new({payload: payload[:dhcp_server]}),
+              DomainNameOption.new({payload: payload[:domainname]}),
+              DomainNameServerOption.new({payload: payload[:dns_server]}),
+              IPAddressLeaseTimeOption.new({payload: payload[:lease_time]}),
+              SubnetMaskOption.new({payload: payload[:subnet_mask]}),
+              RouterOption.new({payload: payload[:gateway]})
           ]
       }
-      @socket.send(Message.new(params).pack, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+      Message.new(params).pack
     end
   end
 end
