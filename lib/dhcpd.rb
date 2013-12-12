@@ -154,6 +154,7 @@ module DHCPD
 	  end
 	else
 	  @log.error 'Unknown POOL_MODE. Please check your configuration.'
+	  @socket.close
 	  exit 1
       end
     end

@@ -1,4 +1,6 @@
 require 'ipaddr'
+require 'net/http'
+require 'json'
 
 module DHCPD
   class DHCPD
@@ -33,9 +35,23 @@ module DHCPD
     end
 
     def remote_get_payload(hwaddr,type)
-      # will be implemented soon
-      @log.error 'Remote pool is unavailable.'
-      raise
+      uri = URI(REMOTE_POOL)
+      begin
+	res = Net::HTTP.post_form(uri, 'hwaddr' => hwaddr, 'check_in' => Time.now)
+      rescue
+        @log.error 'Remote pool is completely unavailable.'
+	raise
+      end
+      if res.is_a?(Net::HTTPSuccess)
+	begin
+	  JSON.parse(res.body)
+	rescue
+	  @log.error "Received invalid data from remote pool server."
+	end
+      else
+	@log.error "Remote pool return code: #{res.code}"
+	raise
+      end
     end
 
     def local_get_payload(hwaddr,type)
