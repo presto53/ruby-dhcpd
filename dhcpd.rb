@@ -1,27 +1,44 @@
 #!/usr/bin/env ruby
-
+require 'bundler'
+Bundler.setup
 require_relative 'lib/helpers'
 require_relative 'lib/dhcpd'
 
 module DHCPD
   class DHCPD
-    ###
-    #
-    # Configuration block
-    #
-    ###
-    # Log level from 0 to 6, where 0 is most verbose logging.
+    #################
+    # Configuration #
+    #################
+
+    # Log level 
+    # from 0 to 6, where 0 is most verbose
     LOG_LEVEL = 0
 
     # Server ip
-    SERVER_BIND_IP = ARGV[0].to_s ||= '0.0.0.0'
+    SERVER_BIND_IP = '0.0.0.0'
 
-    # Pool's configuration
-    #
-    # You can use subnet notation like 192.168.1.0/24, or just ip like 172.16.0.4
-    # If you want to use same options for more than one subnet, you should separate 
-    # then with comma's like ['192.168.1.0/24', '192.168.3.0/24']
-    SERVER_IP_POOL =
+    ######################
+    # Pool configuration #
+    ####################a##
+
+    # Pool mode
+    # :remote, :local, :both
+    # When set to :both it mean that local pool 
+    # will be used if remote is unavailable
+    POOL_MODE = :local
+
+    # Remote pool address
+    # when POOL_MODE is set to :remote or :both
+    # server will try to get configuration for host
+    # from remote server. Server will send HTTP GET 
+    # request to REMOTE_POOL address with hwaddr 
+    # parameter.
+    REMOTE_POOL = 'http://127.0.0.1/pool'
+
+    # Local pool configuration
+    # Use subnet notation like 192.168.1.0/24
+    # or just ip like 172.16.0.4. 
+    LOCAL_IP_POOL =
         {
             subnet: '192.168.1.0/24',
             options: {
@@ -37,4 +54,4 @@ module DHCPD
   end
 end
 
-DHCPD::DHCPD.new(DHCPD::DHCPD::SERVER_IP_POOL).run
+DHCPD::DHCPD.new(DHCPD::DHCPD::LOCAL_IP_POOL).run

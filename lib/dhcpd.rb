@@ -86,7 +86,7 @@ module DHCPD
           @log.info "DHCP INFORM message from #{hwaddr}."
           inform(msg, addr)
         else
-          @log.warn "We received something strange.... EXTERMINA-A-A-ATE!"
+          @log.warn 'We received something strange.... EXTERMINA-A-A-ATE!'
       end
     end
 
@@ -101,26 +101,24 @@ module DHCPD
     end
 
     def release(msg, addr)
-      @log.info "RELEASE will be when release will be."
+      @log.info 'RELEASE will be when release will be.'
     end
 
     def inform(msg, addr)
-      @log.info "INFORM not yet implemented. Soon..."
+      @log.info 'INFORM not yet implemented. Soon...'
     end
 
     def send_packet(msg,addr,type)
-      packet = craft_packet(msg,addr,type)
-      @socket.send(packet, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+      begin
+        packet = craft_packet(msg,addr,type)
+        @socket.send(packet, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+      rescue
+	@log.error 'Error while creating reply packet.'
+      end
     end
 
     def craft_packet(msg,addr,type)
-      hwaddr = to_hwaddr(msg.chaddr,msg.hlen)
-      payload = remote_get_payload(hwaddr, type)
-      unless payload
-	payload = Hash.new
-	@ip_pool[:options].each {|op, data| payload[op] = data} 
-	payload[:ipaddr] = ip_from_default_pool(hwaddr).to_i
-      end
+      payload = payload_from_pool(msg,addr,type)
       params = {
           op: $DHCP_OP_REPLY,
           xid: msg.xid,
@@ -139,6 +137,25 @@ module DHCPD
           ]
       }
       Message.new(params).pack
+    end
+
+    def payload_from_pool(msg,addr,type)
+      hwaddr = to_hwaddr(msg.chaddr,msg.hlen)
+      case POOL_MODE
+	when :remote then
+	  remote_get_payload(hwaddr,type)
+	when :local then
+	  local_get_payload(hwaddr,type)
+	when :both then
+	  begin 
+	    remote_get_payload(hwaddr,type)
+	  rescue
+	    local_get_payload(hwaddr,type)
+	  end
+	else
+	  @log.error 'Unknown POOL_MODE. Please check your configuration.'
+	  exit 1
+      end
     end
   end
 end
