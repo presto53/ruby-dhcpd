@@ -23,7 +23,7 @@ module DHCPD
 
     private
 
-    def self.set_logger
+    def set_logger
       @log = Log4r::Logger.new 'ruby-dhcpd'
       @log.outputters << Log4r::Outputter.stdout
       @log.outputters << Log4r::FileOutputter.new('dhcpd.log', filename:  Config::LOG_FILE)
