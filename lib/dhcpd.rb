@@ -27,7 +27,8 @@ module DHCPD
     def set_logger
       @log = Log4r::Logger.new 'ruby-dhcpd'
       @log.outputters << Log4r::Outputter.stdout
-      @log.outputters << Log4r::FileOutputter.new('dhcpd.log', filename:  Config::LOG_FILE)
+      format = Log4r::PatternFormatter.new(:pattern => "[%l] [%d] %m")
+      @log.outputters << Log4r::FileOutputter.new('dhcpd.log', filename:  Config::LOG_FILE, formatter: format)
       @log.level = Config::LOG_LEVEL
     end
 
