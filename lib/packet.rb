@@ -68,7 +68,7 @@ module DHCPD
 
     def send_packet(packet)
       @log.info "Send DHCP #{@reply.to_s.upcase} message to #{@hwaddr}."
-      @socket.send(packet, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+      @socket.send(packet, 0, '255.255.255.255', Config::CLIENT_DHCP_PORT)
     end
   end
 end

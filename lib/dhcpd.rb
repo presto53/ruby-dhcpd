@@ -60,9 +60,7 @@ module DHCPD
       msg_type = Packet::REQUEST_TYPES
       msg_type.keep_if {|type, body| msg.options.include?(body)}
       return false if msg_type.size != 1
-      msg.options.each do |option|
-	type = Packet::REQUEST_TYPES.rassoc(option) if Packet::REQUEST_TYPES.values.include?(option)
-      end
+      type = msg_type.shift[0]
       @log.info "DHCP #{type.to_s.upcase} message from #{hwaddr}."
       reply = Packet.new(type, @ip_pool,msg)
       begin

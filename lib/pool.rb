@@ -24,7 +24,7 @@ module DHCPD
       resp = Hash.new
       begin
 	ipaddr = @pool[:addreses].sample
-      end while @leases.values.include(ipaddr)
+      end while @leases.values.include?(ipaddr)
       resp[:ipaddr] = ipaddr.to_i
       @pool[:options].each {|option, data| resp[option] = data}
       lock(hwaddr,ipaddr) if lock
@@ -32,7 +32,7 @@ module DHCPD
     end
 
     def from_remote(hwaddr, lock)
-      uri = URI(REMOTE_POOL)
+      uri = URI(Config::REMOTE_POOL)
       begin
 	res = Net::HTTP.post_form(uri, 'hwaddr' => hwaddr, 'check_in' => Time.now, 'lock' => lock)
       rescue
