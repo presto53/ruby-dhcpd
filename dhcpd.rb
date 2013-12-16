@@ -1,57 +1,14 @@
 #!/usr/bin/env ruby
 require 'bundler'
 Bundler.setup
-require_relative 'lib/helpers'
 require_relative 'lib/dhcpd'
 
 module DHCPD
-  class DHCPD
-    #################
-    # Configuration #
-    #################
-
-    # Log level 
-    # from 0 to 6, where 0 is most verbose
-    LOG_LEVEL = 0
-
-    # Server ip
-    SERVER_BIND_IP = '0.0.0.0'
-
-    ######################
-    # Pool configuration #
-    ####################a##
-
-    # Pool mode
-    # :remote, :local, :both
-    # When set to :both it mean that local pool 
-    # will be used if remote is unavailable
-    POOL_MODE = :local
-
-    # Remote pool address
-    # when POOL_MODE is set to :remote or :both
-    # server will try to get configuration for host
-    # from remote server. Server will send HTTP GET 
-    # request to REMOTE_POOL address with hwaddr 
-    # parameter.
-    REMOTE_POOL = 'http://127.0.0.1/pool'
-
-    # Local pool configuration
-    # Use subnet notation like 192.168.1.0/24
-    # or just ip like 172.16.0.4. 
-    LOCAL_IP_POOL =
-        {
-            subnet: '192.168.1.0/24',
-            options: {
-                dhcp_server:'192.168.1.1',
-                gateway:'192.168.1.1',
-                subnet_mask: '255.255.255.0',
-                domainname: 'local.domain',
-                dns_server: '8.8.8.8',
-                lease_time: 28800, # 8 hours
-                filename: 'pxeloader.0'
-            }
-        }
+  class Config
+    load 'config.rb'
+    SERVER_DHCP_PORT = 67
+    CLIENT_DHCP_PORT = 68
   end
 end
 
-DHCPD::DHCPD.new(DHCPD::DHCPD::LOCAL_IP_POOL).run
+DHCPD::Server.new.run

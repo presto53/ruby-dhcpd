@@ -5,157 +5,70 @@ require 'log4r'
 require_relative 'helpers'
 
 module DHCPD
-  class DHCPD
+  class Server
     include DHCP
+    include DHCPD
 
-    def initialize(ip_pool)
-      @ip_pool = pool_from(ip_pool)
-      @log = Log4r::Logger.new 'ruby-dhcpd'
-      @log.outputters = Log4r::Outputter.stdout
-      @log.level = LOG_LEVEL
-      @request_types = {
-          discover: MessageTypeOption.new({payload: [$DHCP_MSG_DISCOVER]}),
-          request: MessageTypeOption.new({payload: [$DHCP_MSG_REQUEST]}),
-          decline: MessageTypeOption.new({payload: [$DHCP_MSG_DECLINE]}),
-          release: MessageTypeOption.new({payload: [$DHCP_MSG_RELEASE]}),
-          inform: MessageTypeOption.new({payload: [$DHCP_MSG_INFORM]})
-      }
-      @reply_types = {
-          offer: MessageTypeOption.new({payload: [$DHCP_MSG_OFFER]}),
-          ack: MessageTypeOption.new({payload: [$DHCP_MSG_ACK]}),
-          nack: MessageTypeOption.new({payload: [$DHCP_MSG_NACK]})
-      }
-
+    def initialize
+      set_logger
+      @ip_pool = Pool.new(Config::POOL_MODE)
     end
 
     def run
       bind
       loop do
-        req = receive
-        process(req[:msg],req[:addr])
+	@log.error 'Unknown error while processing received message.' unless process(receive)
       end
     end
 
     private
 
+    def self.set_logger
+      @log = Log4r::Logger.new 'ruby-dhcpd'
+      @log.outputters << Log4r::Outputter.stdout
+      @log.outputters << Log4r::FileOutputter.new('dhcpd.log', filename:  Config::LOG_FILE)
+      @log.level = Config::LOG_LEVEL
+    end
+
     def bind
       @socket = UDPSocket.new
-      #@socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_REUSEADDR, true )
       @socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_BROADCAST, true )
-      if @socket.bind(SERVER_BIND_IP,SERVER_DHCP_PORT)
-        @log.info "Binding to #{SERVER_BIND_IP} successful."
+      if @socket.bind(Config::SERVER_BIND_IP,Config::SERVER_DHCP_PORT)
+	@log.info "Bind to #{Config::SERVER_BIND_IP} successful."
       else
-        @log.fatal "Can not bind to #{SERVER_BIND_IP}."
-        exit 1
+	@log.fatal "Bind to #{Config::SERVER_BIND_IP} failed."
+	exit 1
       end
     end
 
     def receive
       begin
-        data, addr = @socket.recvfrom_nonblock(1500)  #=> ["aaa", ["AF_INET", 33302, "localhost.localdomain", "127.0.0.1"]]
-        msg = Message.from_udp_payload(data)
+	data, addr = @socket.recvfrom_nonblock(1500)
+	msg = Message.from_udp_payload(data)
       rescue IO::WaitReadable
-        IO.select([@socket])
-        retry
+	IO.select([@socket])
+	retry
       end
       {msg: msg, addr: addr}
     end
 
-    def process(msg,addr)
-      hwaddr = to_hwaddr(msg.chaddr,msg.hlen)
-      @log.debug "DHCP message from #{hwaddr}. Yay!"
-      requested = false
-      msg.options.each do |op|
-        requested = op if @request_types.values.include?(op)
+    def process(data)
+      msg = data[:msg]
+      addr = data[:addr]
+      hwaddr = Helper.to_hwaddr(msg.chaddr,msg.hlen)
+      @log.debug "Message from #{hwaddr}. Yay!"
+      msg_type = Packet::REQUEST_TYPES
+      msg_type.keep_if {|type, body| msg.options.include?(body)}
+      return false if msg_type.size != 1
+      msg.options.each do |option|
+	type = Packet::REQUEST_TYPES.rassoc(option) if Packet::REQUEST_TYPES.values.include?(option)
       end
-      @log.info "DHCP request: #{requested}"
-
-      case requested
-        when @request_types[:discover] then
-          @log.info "DHCP DISCOVER message from #{hwaddr}."
-          offer(msg,addr)
-        when @request_types[:request] then
-          @log.info "DHCP REQUEST message from #{hwaddr}."
-          ack(msg, addr)
-        when @request_types[:decline] then
-          @log.info "DHCP DECLINE message from #{hwaddr}."
-        when @request_types[:release] then
-          @log.info "DHCP RELEASE message from #{hwaddr}."
-          release(msg, addr)
-        when @request_types[:inform] then
-          @log.info "DHCP INFORM message from #{hwaddr}."
-          inform(msg, addr)
-        else
-          @log.warn 'We received something strange.... EXTERMINA-A-A-ATE!'
-      end
-    end
-
-    def offer(msg, addr)
-      @log.info "Send DHCP OFFER message to #{to_hwaddr(msg.chaddr,msg.hlen)}."
-      send_packet(msg, addr, :offer)
-    end
-
-    def ack(msg, addr)
-      @log.info "Send DHCP ACK message to #{to_hwaddr(msg.chaddr,msg.hlen)}."
-      send_packet(msg, addr, :ack)
-    end
-
-    def release(msg, addr)
-      @log.info 'RELEASE will be when release will be.'
-    end
-
-    def inform(msg, addr)
-      @log.info 'INFORM not yet implemented. Soon...'
-    end
-
-    def send_packet(msg,addr,type)
+      @log.info "DHCP #{type.to_s.upcase} message from #{hwaddr}."
+      reply = Packet.new(type, @ip_pool,msg)
       begin
-        packet = craft_packet(msg,addr,type)
-        @socket.send(packet, 0, '255.255.255.255', CLIENT_DHCP_PORT)
+	reply.send(@socket)
       rescue
 	@log.error 'Error while creating reply packet.'
-      end
-    end
-
-    def craft_packet(msg,addr,type)
-      payload = payload_from_pool(msg,addr,type)
-      params = {
-          op: $DHCP_OP_REPLY,
-          xid: msg.xid,
-          chaddr: msg.chaddr,
-          yiaddr: payload[:ipaddr],
-          siaddr: IPAddr.new(payload[:dhcp_server].join('.')).to_i,
-	  fname: payload[:filename],
-          options: [
-              @reply_types[type],
-              ServerIdentifierOption.new({payload: payload[:dhcp_server]}),
-              DomainNameOption.new({payload: payload[:domainname]}),
-              DomainNameServerOption.new({payload: payload[:dns_server]}),
-              IPAddressLeaseTimeOption.new({payload: payload[:lease_time]}),
-              SubnetMaskOption.new({payload: payload[:subnet_mask]}),
-              RouterOption.new({payload: payload[:gateway]})
-          ]
-      }
-      Message.new(params).pack
-    end
-
-    def payload_from_pool(msg,addr,type)
-      hwaddr = to_hwaddr(msg.chaddr,msg.hlen)
-      case POOL_MODE
-	when :remote then
-	  remote_get_payload(hwaddr,type)
-	when :local then
-	  local_get_payload(hwaddr,type)
-	when :both then
-	  begin 
-	    remote_get_payload(hwaddr,type)
-	  rescue
-	    local_get_payload(hwaddr,type)
-	  end
-	else
-	  @log.error 'Unknown POOL_MODE. Please check your configuration.'
-	  @socket.close
-	  exit 1
       end
     end
   end
