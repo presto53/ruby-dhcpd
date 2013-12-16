@@ -11,6 +11,7 @@ module DHCPD
       raise "Unknown pool mode #{pool_mode.to_s}." unless SUPPORTED_MODES.include?(pool_mode)
       @mode = pool_mode
       @leases = Hash.new
+      @offered = Hash.new
       @pool = pool_from_config
     end
 
@@ -22,12 +23,21 @@ module DHCPD
 
     def from_local(hwaddr, lock)
       resp = Hash.new
-      begin
-	ipaddr = @pool[:addreses].sample
-      end while @leases.values.include?(ipaddr)
+      if @offered[hwaddr]
+	ipaddr = @offered[hwaddr]
+	@offered.delete(hwaddr)
+      else
+	begin
+	  ipaddr = @pool[:addreses].sample
+	end while @leases.values.include?(ipaddr)
+      end
       resp[:ipaddr] = ipaddr.to_i
       @pool[:options].each {|option, data| resp[option] = data}
-      lock(hwaddr,ipaddr) if lock
+      if lock
+	lock(hwaddr,ipaddr)
+      else
+	offer(hwaddr,ipaddr)
+      end
       resp
     end
 
@@ -69,7 +79,11 @@ module DHCPD
     end
 
     def lock(hwaddr, ip)
-      @leases['hwaddr'] = ip
+      @leases[hwaddr] = ip
+    end
+
+    def offer(hwaddr, ip)
+      @offered[hwaddr] = ip
     end
   end
 end
