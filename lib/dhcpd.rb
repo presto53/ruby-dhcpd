@@ -1,13 +1,13 @@
 require 'socket'
-require 'ipaddr'
 require 'net-dhcp'
 require 'log4r'
 require_relative 'helpers'
+require_relative 'pool'
+require_relative 'packet'
 
 module DHCPD
   class Server
     include DHCP
-    include DHCPD
 
     def initialize
       set_logger

@@ -53,11 +53,12 @@ module DHCPD
 
     def pool_from_config
       pool = Hash.new
-      pool[:addreses] = IPAddr.new(LOCAL_POOL[:subnet]).to_range.to_a
+      pool[:addreses] = IPAddr.new(Config::LOCAL_POOL[:subnet]).to_range.to_a
       pool[:addreses].shift
       pool[:addreses].pop
-      pool[:addreses] = pool[:addreses] - LOCAL_POOL[:exclude].map {|s| IPAddr.new(s).to_range.to_a}.inject {|sum, a| sum+=a}
-      pool[:options] = LOCAL_POOL[:options]
+      exclude = Config::LOCAL_POOL[:exclude].map {|s| IPAddr.new(s).to_range.to_a}.inject {|sum, a| sum+=a}
+      pool[:addreses] = pool[:addreses] - Config::LOCAL_POOL[:exclude].map {|s| IPAddr.new(s).to_range.to_a}.inject {|sum, a| sum+=a} if exclude.kind_of?(Array)
+      pool[:options] = Config::LOCAL_POOL[:options]
       pool[:options][:dhcp_server] = pool[:options][:dhcp_server].split('.').map! {|octet| octet.to_i}
       pool[:options][:domainname] = pool[:options][:domainname].unpack('C*')
       pool[:options][:dns_server] = pool[:options][:dns_server].split('.').map! {|octet| octet.to_i}

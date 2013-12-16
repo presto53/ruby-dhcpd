@@ -1,8 +1,12 @@
 require 'net/dhcp'
+require 'ipaddr'
 require 'log4r'
+require_relative 'helpers'
 
 module DHCPD
   class Packet
+    include DHCP
+
     REQUEST_TYPES = {
       discover: MessageTypeOption.new({payload: [$DHCP_MSG_DISCOVER]}),
       request: MessageTypeOption.new({payload: [$DHCP_MSG_REQUEST]}),
