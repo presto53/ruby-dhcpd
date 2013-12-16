@@ -11,4 +11,4 @@ module DHCPD
   end
 end
 
-DHCPD::Server.new.run
+DHCPD::Server.new((ARGV[0] || DHCPD::Config::SERVER_BIND_IP)).run

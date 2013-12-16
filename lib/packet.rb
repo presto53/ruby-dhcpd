@@ -27,9 +27,9 @@ module DHCPD
       :inform => false
     }
 
-    def initialize(type, pool, msg)
-      @type = type
-      @reply = ACTION_MAP[@type]
+    def initialize(received_type, pool, msg)
+      @received_type = received_type
+      @type = Packet::ACTION_MAP[received_type]
       @pool = pool
       @msg = msg
       @hwaddr = Helper.to_hwaddr(msg.chaddr,msg.hlen)
@@ -38,13 +38,18 @@ module DHCPD
 
     def send(socket)
       @socket = socket
-      send_packet(create_packet) if @reply
+      if @type
+	send_packet(create_packet)
+      else
+	@log.info "Reply for #{@received_type.to_s.upcase} not implemented yet."
+	true
+      end
     end
 
     private
 
     def create_packet
-      lock = (@reply == :ack ? true : false)
+      lock = (@type == :ack ? true : false)
       payload = @pool.get_payload(@hwaddr,lock)
       params = {
 	op: $DHCP_OP_REPLY,
@@ -54,7 +59,7 @@ module DHCPD
 	siaddr: IPAddr.new(payload[:dhcp_server].join('.')).to_i,
 	fname: payload[:filename],
 	options: [
-	  REPLY_TYPES[@reply],
+	  REPLY_TYPES[@type],
 	  ServerIdentifierOption.new({payload: payload[:dhcp_server]}),
 	  DomainNameOption.new({payload: payload[:domainname]}),
 	  DomainNameServerOption.new({payload: payload[:dns_server]}),
@@ -67,7 +72,7 @@ module DHCPD
     end
 
     def send_packet(packet)
-      @log.info "Send DHCP #{@reply.to_s.upcase} message to #{@hwaddr}."
+      @log.info "Send DHCP #{@type.to_s.upcase} message to #{@hwaddr}."
       @socket.send(packet, 0, '255.255.255.255', Config::CLIENT_DHCP_PORT)
     end
   end

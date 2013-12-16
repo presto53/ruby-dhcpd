@@ -9,8 +9,9 @@ module DHCPD
   class Server
     include DHCP
 
-    def initialize
+    def initialize(bind_ip)
       set_logger
+      @bind_ip = bind_ip
       @ip_pool = Pool.new(Config::POOL_MODE)
     end
 
@@ -33,10 +34,10 @@ module DHCPD
     def bind
       @socket = UDPSocket.new
       @socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_BROADCAST, true )
-      if @socket.bind(Config::SERVER_BIND_IP,Config::SERVER_DHCP_PORT)
-	@log.info "Bind to #{Config::SERVER_BIND_IP} successful."
+      if @socket.bind(@bind_ip,Config::SERVER_DHCP_PORT)
+	@log.info "Bind to #{@bind_ip} successful."
       else
-	@log.fatal "Bind to #{Config::SERVER_BIND_IP} failed."
+	@log.fatal "Bind to #{@bind_ip} failed."
 	exit 1
       end
     end
@@ -57,12 +58,12 @@ module DHCPD
       addr = data[:addr]
       hwaddr = Helper.to_hwaddr(msg.chaddr,msg.hlen)
       @log.debug "Message from #{hwaddr}. Yay!"
-      msg_type = Packet::REQUEST_TYPES
+      msg_type = Packet::REQUEST_TYPES.clone
       msg_type.keep_if {|type, body| msg.options.include?(body)}
       return false if msg_type.size != 1
-      type = msg_type.shift[0]
-      @log.info "DHCP #{type.to_s.upcase} message from #{hwaddr}."
-      reply = Packet.new(type, @ip_pool,msg)
+      received_type = msg_type.shift[0]
+      @log.info "DHCP #{received_type.to_s.upcase} message from #{hwaddr}."
+      reply = Packet.new(received_type, @ip_pool,msg)
       begin
 	reply.send(@socket)
       rescue
