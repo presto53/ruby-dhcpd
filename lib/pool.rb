@@ -40,14 +40,14 @@ module DHCPD
     def from_remote(hwaddr, lock)
       uri = URI(Config::REMOTE_POOL)
       begin
-	res = Net::HTTP.post_form(uri, 'hwaddr' => hwaddr, 'check_in' => Time.now, 'lock' => lock)
+	res = Net::HTTP.post_form(uri, 'hwaddr' => hwaddr, 'lease' => lock)
       rescue
 	@log.error 'Remote pool is completely unavailable.'
 	raise
       end
       if res.is_a?(Net::HTTPSuccess)
 	begin
-	  JSON.parse(res.body)
+	  Hash[JSON.parse(res.body).map{ |k, v| [k.to_sym, v] }]
 	rescue
 	  @log.error "Received invalid data from remote pool server."
 	end
