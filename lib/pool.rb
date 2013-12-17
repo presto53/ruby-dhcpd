@@ -13,6 +13,7 @@ module DHCPD
       @leases = Hash.new
       @offers = Hash.new
       @pool = pool_from_config
+      @log = Log4r::Logger['ruby-dhcpd']
     end
 
     def get_payload(hwaddr,lock)

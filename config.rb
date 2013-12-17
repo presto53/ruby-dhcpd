@@ -6,7 +6,8 @@ module DHCPD
     LOG_FILE = 'dhcpd.log'
 
     # Server ip
-    SERVER_BIND_IP = '0.0.0.0'
+    SERVER_BIND_IP = '255.255.255.255'
+    SERVER_SUBNET = '192.168.50.0/24'
 
     # Pool mode
     # :remote, :local
@@ -25,7 +26,7 @@ module DHCPD
     # or just ip like 172.16.0.4.
     LOCAL_POOL =
       {
-      subnet: '192.168.1.0/24',
+      subnet: SERVER_SUBNET,
       exclude: [],
       options: {
 	dhcp_server:'192.168.1.1',
