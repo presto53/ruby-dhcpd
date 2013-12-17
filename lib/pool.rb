@@ -52,6 +52,7 @@ module DHCPD
 	  convert_remote(Hash[JSON.parse(res.body).map{ |k, v| [k.to_sym, v] }])
 	rescue
 	  @log.error "Received invalid data from remote pool server."
+	  raise
 	end
       else
 	@log.error "Remote pool return code: #{res.code}"
@@ -81,10 +82,11 @@ module DHCPD
       converted[:ipaddr] = IPAddr.new(remote[:ipaddr]).to_i
       converted[:dhcp_server] = remote[:dhcp_server].split('.').map! {|octet| octet.to_i}
       converted[:domainname] = remote[:domainname].unpack('C*')
-      converted[:dns_server] = remote[:dns_server].split('.').map! {|octet| octet.to_i}
-      converted[:lease_time] = [remote[:lease_time]].pack('N').unpack('C*')
+      converted[:dns_server] = remote[:dns].split('.').map! {|octet| octet.to_i}
+      converted[:lease_time] = [remote[:leasetime]].pack('N').unpack('C*')
       converted[:subnet_mask] = remote[:subnet_mask].split('.').map! {|octet| octet.to_i}
       converted[:gateway] = remote[:gateway].split('.').map! {|octet| octet.to_i}
+      converted[:filename] = remote[:filename]
       converted
     end
 
