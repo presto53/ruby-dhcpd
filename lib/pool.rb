@@ -41,14 +41,15 @@ module DHCPD
     def from_remote(hwaddr, lock)
       uri = URI(Config::REMOTE_POOL)
       begin
-	res = Net::HTTP.post_form(uri, 'hwaddr' => hwaddr, 'lease' => lock)
+	uri.query = URI.encode_www_form({'hwaddr' => hwaddr, 'lease' => lock})
+	res = Net::HTTP.get_response(uri)
       rescue
 	@log.error 'Remote pool is completely unavailable.'
 	raise
       end
       if res.is_a?(Net::HTTPSuccess)
 	begin
-	  Hash[JSON.parse(res.body).map{ |k, v| [k.to_sym, v] }]
+	  convert_remote(Hash[JSON.parse(res.body).map{ |k, v| [k.to_sym, v] }])
 	rescue
 	  @log.error "Received invalid data from remote pool server."
 	end
@@ -73,6 +74,18 @@ module DHCPD
       pool[:options][:subnet_mask] = pool[:options][:subnet_mask].split('.').map! {|octet| octet.to_i}
       pool[:options][:gateway] = pool[:options][:gateway].split('.').map! {|octet| octet.to_i}
       pool
+    end
+
+    def convert_remote(remote)
+      converted = Hash.new
+      converted[:ipaddr] = IPAddr.new(remote[:ipaddr]).to_i
+      converted[:dhcp_server] = remote[:dhcp_server].split('.').map! {|octet| octet.to_i}
+      converted[:domainname] = remote[:domainname].unpack('C*')
+      converted[:dns_server] = remote[:dns_server].split('.').map! {|octet| octet.to_i}
+      converted[:lease_time] = [remote[:lease_time]].pack('N').unpack('C*')
+      converted[:subnet_mask] = remote[:subnet_mask].split('.').map! {|octet| octet.to_i}
+      converted[:gateway] = remote[:gateway].split('.').map! {|octet| octet.to_i}
+      converted
     end
 
     def lease(hwaddr, ipaddr)

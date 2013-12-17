@@ -19,7 +19,7 @@ module DHCPD
     # from remote server. Server will send HTTP GET
     # request to REMOTE_POOL address with hwaddr
     # parameter.
-    REMOTE_POOL = 'http://127.0.0.1/pool'
+    REMOTE_POOL = 'http://127.0.0.1:9292/api/host'
 
     # Local pool configuration
     # Use subnet notation like 192.168.1.0/24
