@@ -84,7 +84,7 @@ module DHCPD
       converted[:domainname] = remote[:domainname].unpack('C*')
       converted[:dns_server] = remote[:dns].split('.').map! {|octet| octet.to_i}
       converted[:lease_time] = [remote[:leasetime]].pack('N').unpack('C*')
-      converted[:subnet_mask] = remote[:subnet_mask].split('.').map! {|octet| octet.to_i}
+      converted[:subnet_mask] = remote[:netmask].split('.').map! {|octet| octet.to_i}
       converted[:gateway] = remote[:gateway].split('.').map! {|octet| octet.to_i}
       converted[:filename] = remote[:filename]
       converted
