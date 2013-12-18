@@ -5,6 +5,7 @@ require_relative 'lib/dhcpd'
 require_relative 'config.rb'
 
 module DHCPD
+  # Class with configuration constants
   class Config
     SERVER_DHCP_PORT = 67
     CLIENT_DHCP_PORT = 68

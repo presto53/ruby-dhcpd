@@ -15,6 +15,8 @@ module DHCPD
       @ip_pool = Pool.new(Config::POOL_MODE)
     end
 
+    # Server runner
+    # First it's bind to socket and then receive and process messages
     def run
       bind
       loop do
@@ -24,6 +26,7 @@ module DHCPD
 
     private
 
+    # Logger configuration
     def set_logger
       @log = Log4r::Logger.new 'ruby-dhcpd'
       @log.outputters << Log4r::Outputter.stdout
@@ -32,6 +35,10 @@ module DHCPD
       @log.level = Config::LOG_LEVEL
     end
 
+    # Create UDP socket and bind to it.
+    #
+    # if bind failed exit with status code 1
+    # @return [true] result of binding
     def bind
       @socket = UDPSocket.new
       @socket.setsockopt( Socket::SOL_SOCKET, Socket::SO_BROADCAST, true )
@@ -43,6 +50,11 @@ module DHCPD
       end
     end
 
+    # Receive message from socket
+    #
+    # @return [Hash] received message and address of sender
+    # @option received [Message] :msg Net::DHCP::Message object
+    # @option received [Array] :addr is an array to represent the sender address
     def receive
       begin
 	data, addr = @socket.recvfrom_nonblock(1500)
@@ -54,6 +66,11 @@ module DHCPD
       {msg: msg, addr: addr}
     end
 
+    # Process received data
+    #
+    # @param [Hash] data received from socket
+    # @option data [Message] :msg Net::DHCP::Message object
+    # @option data [Array] :addr is an array to represent the sender address
     def process(data)
       msg = data[:msg]
       addr = data[:addr]

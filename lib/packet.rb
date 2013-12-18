@@ -36,6 +36,10 @@ module DHCPD
       @log = Log4r::Logger['ruby-dhcpd']
     end
 
+    # Send object to socket
+    #
+    # @param socket [UDPSocket] the UDP socket object
+    # @return [true,false] result of operation 
     def send(socket)
       @socket = socket
       if @type
@@ -48,6 +52,9 @@ module DHCPD
 
     private
 
+    # Construct reply packet from received message and from pool settings
+    #
+    # @return [String] packed Net::DHCP::Message object
     def create_packet
       lock = (@type == :ack ? true : false)
       payload = @pool.get_payload(@hwaddr,lock)
@@ -71,6 +78,10 @@ module DHCPD
       Message.new(params).pack
     end
 
+    # Send packet to socket
+    #
+    # @param packet [String] packed Net::DHCP::Message object
+    # @return [true,false] result of operation
     def send_packet(packet)
       @log.info "Send DHCP #{@type.to_s.upcase} message to #{@hwaddr}."
       @socket.send(packet, 0, IPAddr.new(Config::SERVER_SUBNET).to_range.to_a.pop.to_s, Config::CLIENT_DHCP_PORT)
