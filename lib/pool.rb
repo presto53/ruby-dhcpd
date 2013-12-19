@@ -87,6 +87,7 @@ module DHCPD
       converted[:subnet_mask] = remote[:netmask].split('.').map! {|octet| octet.to_i}
       converted[:gateway] = remote[:gateway].split('.').map! {|octet| octet.to_i}
       converted[:filename] = remote[:filename]
+      converted[:netboot] = remote[:netboot]
       converted
     end
 

@@ -43,7 +43,8 @@ module DHCPD
     def send(socket)
       @socket = socket
       if @type
-	send_packet(create_packet)
+	data = create_packet
+	send_packet(data) unless data == :netboot
       else
 	@log.info "Reply for #{@received_type.to_s.upcase} not implemented yet."
 	true
@@ -58,6 +59,7 @@ module DHCPD
     def create_packet
       lock = (@type == :ack ? true : false)
       payload = @pool.get_payload(@hwaddr,lock)
+      return :noboot if payload[:netboot] == 'false'
       params = {
 	op: $DHCP_OP_REPLY,
 	xid: @msg.xid,
