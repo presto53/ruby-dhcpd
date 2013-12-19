@@ -43,8 +43,7 @@ module DHCPD
     def send(socket)
       @socket = socket
       if @type
-	data = create_packet
-	send_packet(data) unless data == :netboot
+	send_packet(create_packet)
       else
 	@log.info "Reply for #{@received_type.to_s.upcase} not implemented yet."
 	true
